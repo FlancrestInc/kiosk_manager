@@ -21,6 +21,15 @@ select_chromium_package() {
   return 1
 }
 
+configure_xwrapper() {
+  local config="${XWRAPPER_CONFIG:-/etc/X11/Xwrapper.config}"
+  mkdir -p "$(dirname "$config")"
+  install -m 0644 /dev/stdin "$config" <<'EOF'
+allowed_users=anybody
+needs_root_rights=yes
+EOF
+}
+
 main() {
   if [[ "$(id -u)" -ne 0 ]]; then
     echo "Run this installer as root: sudo ./install.sh" >&2
@@ -42,6 +51,8 @@ main() {
     unclutter \
     x11-xserver-utils \
     rsync
+
+  configure_xwrapper
 
   if ! id "$KIOSK_USER" >/dev/null 2>&1; then
     useradd --system --create-home --home-dir /var/lib/piboard-kiosk --shell /usr/sbin/nologin "$KIOSK_USER"

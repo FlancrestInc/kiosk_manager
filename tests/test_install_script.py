@@ -82,3 +82,26 @@ printf '%s:\\n  Candidate: 123-rpt1\\n' "$2"
     )
 
     assert result.stdout.strip() == "chromium-browser"
+
+
+def test_configure_xwrapper_allows_service_user_to_start_x(tmp_path: Path) -> None:
+    xwrapper_config = tmp_path / "Xwrapper.config"
+    env = os.environ.copy()
+    env["XWRAPPER_CONFIG"] = str(xwrapper_config)
+
+    subprocess.run(
+        [
+            "bash",
+            "-c",
+            f"source {INSTALL_SH}; configure_xwrapper",
+        ],
+        check=True,
+        env=env,
+        text=True,
+        capture_output=True,
+    )
+
+    assert xwrapper_config.read_text(encoding="utf-8") == (
+        "allowed_users=anybody\n"
+        "needs_root_rights=yes\n"
+    )
