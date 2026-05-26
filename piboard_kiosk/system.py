@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import platform
 import socket
 import subprocess
@@ -12,6 +13,7 @@ from .kiosk import ROTATION_STATE_PATH, choose_current_url
 KIOSK_SERVICE = "piboard-kiosk.service"
 ADMIN_SERVICE = "piboard-admin.service"
 ROTATION_ADAPTER = Path("/opt/piboard-kiosk/scripts/apply-display-rotation.sh")
+KIOSK_XAUTHORITY = Path("/var/lib/piboard-kiosk/.Xauthority")
 
 
 def device_info() -> dict[str, str]:
@@ -65,9 +67,14 @@ def reboot_device() -> None:
 def apply_display_rotation(config: KioskConfig) -> str:
     if not ROTATION_ADAPTER.exists():
         return f"Rotation adapter is missing: {ROTATION_ADAPTER}"
+    env = os.environ.copy()
+    env.setdefault("DISPLAY", ":0")
+    if "XAUTHORITY" not in env and KIOSK_XAUTHORITY.exists():
+        env["XAUTHORITY"] = str(KIOSK_XAUTHORITY)
     result = subprocess.run(
         [str(ROTATION_ADAPTER), config.display_rotation],
         check=False,
+        env=env,
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,

@@ -212,7 +212,7 @@ def render_admin_page(
           <div>
         <label for="display_rotation">Display rotation</label>
         <select id="display_rotation" name="display_rotation">{rotation_options}</select>
-        <p class="note">Rotation is written through the adapter script and requires a reboot on Raspberry Pi OS.</p>
+        <p class="note">Rotation is applied live when X11 is available and also saved as a boot-time fallback.</p>
           </div>
           <div>
             <label for="zoom_level">Browser zoom level</label>

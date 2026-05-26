@@ -111,7 +111,9 @@ Display rotation is hardware and Raspberry Pi OS version dependent, so v1 keeps 
 /opt/piboard-kiosk/scripts/apply-display-rotation.sh
 ```
 
-The default adapter writes a managed block to the Raspberry Pi boot config:
+The default adapter first tries live X11 rotation with `xrandr`, using the primary connected output when one is marked and otherwise the first connected output. The admin service targets the kiosk display at `:0`, so changing rotation from the web UI should take effect without rebooting when the X session is running.
+
+The adapter also writes a managed block to the Raspberry Pi boot config as a boot-time fallback:
 
 ```text
 /boot/firmware/config.txt
@@ -130,7 +132,7 @@ It writes `display_lcd_rotate` values:
 - `180`: `display_lcd_rotate=2`
 - `270`: `display_lcd_rotate=3`
 
-This method generally requires a reboot. The admin UI saves the setting and runs the adapter, but the display will not rotate until the next reboot on systems that use this boot-time setting.
+The boot-config fallback may still require a reboot on systems where live X11 rotation is not available.
 
 If your display stack needs a different command, replace only the adapter script and keep the JSON config field unchanged.
 
