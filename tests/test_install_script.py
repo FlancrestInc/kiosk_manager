@@ -105,3 +105,18 @@ def test_configure_xwrapper_allows_service_user_to_start_x(tmp_path: Path) -> No
         "allowed_users=anybody\n"
         "needs_root_rights=yes\n"
     )
+
+
+def test_os_packages_include_color_emoji_font() -> None:
+    result = subprocess.run(
+        [
+            "bash",
+            "-c",
+            f"source {INSTALL_SH}; os_packages chromium",
+        ],
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+
+    assert "fonts-noto-color-emoji" in result.stdout.splitlines()

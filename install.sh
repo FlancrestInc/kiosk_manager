@@ -30,6 +30,22 @@ needs_root_rights=yes
 EOF
 }
 
+os_packages() {
+  local chromium_package="$1"
+  printf '%s\n' \
+    python3 \
+    python3-venv \
+    python3-pip \
+    xserver-xorg \
+    xinit \
+    openbox \
+    "$chromium_package" \
+    unclutter \
+    x11-xserver-utils \
+    fonts-noto-color-emoji \
+    rsync
+}
+
 main() {
   if [[ "$(id -u)" -ne 0 ]]; then
     echo "Run this installer as root: sudo ./install.sh" >&2
@@ -40,17 +56,8 @@ main() {
   apt-get update
   local chromium_package
   chromium_package="$(select_chromium_package)"
-  apt-get install -y \
-    python3 \
-    python3-venv \
-    python3-pip \
-    xserver-xorg \
-    xinit \
-    openbox \
-    "$chromium_package" \
-    unclutter \
-    x11-xserver-utils \
-    rsync
+  mapfile -t packages < <(os_packages "$chromium_package")
+  apt-get install -y "${packages[@]}"
 
   configure_xwrapper
 
