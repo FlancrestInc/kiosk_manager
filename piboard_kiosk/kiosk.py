@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import os
+import shutil
 import time
 from pathlib import Path
 
@@ -8,6 +10,7 @@ from .config import KioskConfig, STATE_DIR
 
 
 ROTATION_STATE_PATH = STATE_DIR / "rotation-state.json"
+CHROMIUM_COMMANDS = ("chromium", "chromium-browser")
 
 
 def rotation_urls(config: KioskConfig) -> list[str]:
@@ -49,7 +52,7 @@ def choose_current_url(
 
 def build_chromium_args(config: KioskConfig, current_url: str) -> list[str]:
     args = [
-        "chromium-browser",
+        find_chromium_command(),
         "--kiosk",
         "--no-first-run",
         "--disable-infobars",
@@ -62,6 +65,18 @@ def build_chromium_args(config: KioskConfig, current_url: str) -> list[str]:
         f"--app={current_url}",
     ]
     return args
+
+
+def find_chromium_command() -> str:
+    configured_command = os.environ.get("PIBOARD_CHROMIUM_COMMAND")
+    if configured_command:
+        return configured_command
+
+    for command in CHROMIUM_COMMANDS:
+        if shutil.which(command):
+            return command
+
+    return CHROMIUM_COMMANDS[0]
 
 
 def _read_rotation_state(state_path: Path) -> dict[str, object]:
