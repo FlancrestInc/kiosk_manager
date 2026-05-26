@@ -1,0 +1,42 @@
+# Python bytecode and test caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Packaging and build output
+*.egg-info/
+build/
+dist/
+*.egg
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Logs and runtime scratch files
+*.log
+*.pid
+*.tmp
+tmp/
+
+# Editor and OS metadata
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Local worktrees
+.worktrees/
+worktrees/
