@@ -120,3 +120,99 @@ def test_os_packages_include_color_emoji_font() -> None:
     )
 
     assert "fonts-noto-color-emoji" in result.stdout.splitlines()
+
+
+def test_os_packages_include_boot_splash_dependencies() -> None:
+    result = subprocess.run(
+        [
+            "bash",
+            "-c",
+            f"source {INSTALL_SH}; os_packages chromium",
+        ],
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+
+    packages = result.stdout.splitlines()
+    assert "plymouth" in packages
+    assert "imagemagick" in packages
+
+
+def test_configure_boot_splash_installs_theme_and_placeholder(tmp_path: Path) -> None:
+    state_dir = tmp_path / "state"
+    theme_dir = tmp_path / "themes"
+    cmdline = tmp_path / "cmdline.txt"
+    cmdline.write_text("console=tty1 rootwait\n", encoding="utf-8")
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    calls = tmp_path / "calls.log"
+    for command in ["plymouth-set-default-theme", "update-initramfs"]:
+        executable = bin_dir / command
+        executable.write_text(
+            f"#!/usr/bin/env bash\nprintf '{command} %s\\n' \"$*\" >> {calls}\n",
+            encoding="utf-8",
+        )
+        executable.chmod(0o755)
+
+    env = os.environ.copy()
+    env["PATH"] = f"{bin_dir}:{env['PATH']}"
+    env["STATE_DIR"] = str(state_dir)
+    env["PLYMOUTH_THEME_ROOT"] = str(theme_dir)
+    env["BOOT_CMDLINE"] = str(cmdline)
+
+    subprocess.run(
+        [
+            "bash",
+            "-c",
+            f"source {INSTALL_SH}; configure_boot_splash",
+        ],
+        check=True,
+        env=env,
+        text=True,
+        capture_output=True,
+    )
+
+    assert (state_dir / "splash.png").read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
+    assert (theme_dir / "piboard-kiosk" / "piboard-kiosk.plymouth").exists()
+    assert (theme_dir / "piboard-kiosk" / "piboard-kiosk.script").exists()
+    assert "splash quiet plymouth.ignore-serial-consoles" in cmdline.read_text(
+        encoding="utf-8"
+    )
+    assert calls.read_text(encoding="utf-8").splitlines() == [
+        "plymouth-set-default-theme piboard-kiosk",
+        "update-initramfs -u",
+    ]
+
+
+def test_configure_boot_splash_preserves_existing_cmdline_tokens(tmp_path: Path) -> None:
+    state_dir = tmp_path / "state"
+    theme_dir = tmp_path / "themes"
+    cmdline = tmp_path / "cmdline.txt"
+    cmdline.write_text(
+        "console=tty1 splash rootwait quiet custom=1\n",
+        encoding="utf-8",
+    )
+
+    env = os.environ.copy()
+    env["STATE_DIR"] = str(state_dir)
+    env["PLYMOUTH_THEME_ROOT"] = str(theme_dir)
+    env["BOOT_CMDLINE"] = str(cmdline)
+
+    subprocess.run(
+        [
+            "bash",
+            "-c",
+            f"source {INSTALL_SH}; configure_boot_splash",
+        ],
+        check=True,
+        env=env,
+        text=True,
+        capture_output=True,
+    )
+
+    tokens = cmdline.read_text(encoding="utf-8").split()
+    assert tokens.count("splash") == 1
+    assert tokens.count("quiet") == 1
+    assert tokens.count("plymouth.ignore-serial-consoles") == 1
+    assert "custom=1" in tokens

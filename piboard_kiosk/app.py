@@ -1,10 +1,22 @@
 from __future__ import annotations
 
 import html
-from fastapi import FastAPI, Form, HTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse, PlainTextResponse
+import os
+import subprocess
+import tempfile
+from pathlib import Path
 
-from .config import CONFIG_PATH, KioskConfig, load_config, save_config
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, PlainTextResponse
+
+from .config import (
+    CONFIG_PATH,
+    DEFAULT_SPLASH_IMAGE_BYTES,
+    SPLASH_PATH,
+    KioskConfig,
+    load_config,
+    save_config,
+)
 from .system import (
     apply_display_rotation,
     kiosk_status,
@@ -15,6 +27,13 @@ from .system import (
 
 
 app = FastAPI(title="PiBoard Kiosk Admin")
+ALLOWED_SPLASH_CONTENT_TYPES = {
+    "image/gif",
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+}
+IMAGE_CONVERTER = os.environ.get("PIBOARD_IMAGE_CONVERTER", "convert")
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -56,6 +75,57 @@ def update_settings(
     return RedirectResponse("/", status_code=303)
 
 
+@app.get("/splash.png")
+def splash_preview() -> FileResponse:
+    ensure_default_splash(SPLASH_PATH)
+    return FileResponse(SPLASH_PATH, media_type="image/png")
+
+
+@app.post("/splash/upload")
+def upload_splash(splash_image: UploadFile = File(...)) -> RedirectResponse:
+    if splash_image.content_type not in ALLOWED_SPLASH_CONTENT_TYPES:
+        raise HTTPException(status_code=400, detail="Upload a PNG, JPEG, WebP, or GIF image")
+
+    SPLASH_PATH.parent.mkdir(parents=True, exist_ok=True)
+    suffix = Path(splash_image.filename or "splash").suffix or ".img"
+    temporary_path = None
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temporary_file:
+            temporary_path = Path(temporary_file.name)
+            while chunk := splash_image.file.read(1024 * 1024):
+                temporary_file.write(chunk)
+        result = subprocess.run(
+            [
+                IMAGE_CONVERTER,
+                str(temporary_path),
+                "-auto-orient",
+                "-resize",
+                "1920x1080>",
+                f"png:{SPLASH_PATH}",
+            ],
+            check=False,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=500, detail="Image converter is not installed") from exc
+    finally:
+        if temporary_path is not None:
+            temporary_path.unlink(missing_ok=True)
+
+    if result.returncode != 0:
+        raise HTTPException(status_code=400, detail=result.stdout.strip() or "Image conversion failed")
+    SPLASH_PATH.chmod(0o644)
+    return RedirectResponse("/", status_code=303)
+
+
+@app.post("/splash/restore")
+def restore_splash() -> RedirectResponse:
+    write_default_splash(SPLASH_PATH)
+    return RedirectResponse("/", status_code=303)
+
+
 @app.post("/restart")
 def restart() -> RedirectResponse:
     restart_kiosk()
@@ -71,6 +141,17 @@ def reboot() -> RedirectResponse:
 @app.get("/logs", response_class=PlainTextResponse)
 def logs() -> str:
     return recent_logs()
+
+
+def write_default_splash(splash_path: Path = SPLASH_PATH) -> None:
+    splash_path.parent.mkdir(parents=True, exist_ok=True)
+    splash_path.write_bytes(DEFAULT_SPLASH_IMAGE_BYTES)
+    splash_path.chmod(0o644)
+
+
+def ensure_default_splash(splash_path: Path = SPLASH_PATH) -> None:
+    if not splash_path.exists():
+        write_default_splash(splash_path)
 
 
 def render_admin_page(
@@ -176,6 +257,15 @@ def render_admin_page(
     }}
     .logs {{ grid-column: 1 / -1; }}
     .note {{ color: var(--muted); font-size: 14px; margin: 8px 0 0; }}
+    .preview {{
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      object-fit: contain;
+      background: #101820;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      margin-bottom: 12px;
+    }}
     @media (max-width: 820px) {{
       header {{ align-items: flex-start; flex-direction: column; }}
       main {{ grid-template-columns: 1fr; }}
@@ -247,6 +337,22 @@ def render_admin_page(
         <form method="post" action="/restart"><button class="secondary" type="submit">Restart kiosk browser</button></form>
         <form method="post" action="/reboot"><button class="danger" type="submit">Reboot device</button></form>
       </div>
+    </section>
+
+    <section>
+      <h2>Boot splash</h2>
+      <img class="preview" src="/splash.png" alt="Current boot splash">
+      <form method="post" action="/splash/upload" enctype="multipart/form-data">
+        <label for="splash_image">Splash image</label>
+        <input id="splash_image" name="splash_image" type="file" accept="image/png,image/jpeg,image/webp,image/gif" required>
+        <p class="note">Shown during boot on the next reboot. PNG, JPEG, WebP, and GIF uploads are stored locally as PNG.</p>
+        <div class="actions">
+          <button type="submit">Upload splash</button>
+        </div>
+      </form>
+      <form method="post" action="/splash/restore" class="actions">
+        <button class="secondary" type="submit">Restore placeholder</button>
+      </form>
     </section>
 
     <section class="logs">

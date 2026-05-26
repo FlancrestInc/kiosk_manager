@@ -44,6 +44,7 @@ The admin UI supports:
 - screen sleep on/off
 - cursor visibility
 - browser zoom level
+- boot splash image upload
 - current kiosk status
 - current URL
 - IP address and hostname
@@ -52,6 +53,10 @@ The admin UI supports:
 - reboot device
 
 Changing settings saves `/etc/piboard-kiosk/config.json`. Click **Restart kiosk browser** after changing URLs, reload interval, cursor visibility, sleep, or zoom.
+
+The boot splash upload stores a local PNG at `/var/lib/piboard-kiosk/splash.png`.
+PNG, JPEG, WebP, and GIF uploads are accepted and normalized to PNG. The new image
+appears during the next reboot.
 
 ## Config
 
@@ -135,6 +140,32 @@ It writes `display_lcd_rotate` values:
 The boot-config fallback may still require a reboot on systems where live X11 rotation is not available.
 
 If your display stack needs a different command, replace only the adapter script and keep the JSON config field unchanged.
+
+## Boot Splash
+
+The installer configures a Plymouth theme named `piboard-kiosk` so the Raspberry Pi
+shows a local splash image instead of the normal scrolling boot log. A generic
+placeholder is installed first, and the admin UI can upload a replacement or restore
+the placeholder.
+
+The installer manages:
+
+```text
+/usr/share/plymouth/themes/piboard-kiosk
+/var/lib/piboard-kiosk/splash.png
+/boot/firmware/cmdline.txt
+```
+
+On older images it falls back to:
+
+```text
+/boot/cmdline.txt
+```
+
+It adds the `splash`, `quiet`, and `plymouth.ignore-serial-consoles` boot arguments
+when a boot command line file is available. The uploaded splash is stored locally, so
+it is available before networking starts. Changes made from the admin UI take effect
+on the next reboot.
 
 ## Non-Interactive Display
 
