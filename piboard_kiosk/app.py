@@ -22,6 +22,7 @@ from .system import (
     kiosk_status,
     recent_logs,
     reboot_device,
+    reload_kiosk_browser,
     restart_kiosk,
 )
 
@@ -129,6 +130,12 @@ def restore_splash() -> RedirectResponse:
 @app.post("/restart")
 def restart() -> RedirectResponse:
     restart_kiosk()
+    return RedirectResponse("/", status_code=303)
+
+
+@app.post("/reload")
+def reload_kiosk() -> RedirectResponse:
+    reload_kiosk_browser()
     return RedirectResponse("/", status_code=303)
 
 
@@ -334,7 +341,7 @@ def render_admin_page(
         <dt>IP address</dt><dd>{escape(status.get("ip_address", "unknown"))}</dd>
       </dl>
       <div class="actions">
-        <form method="post" action="/restart"><button class="secondary" type="submit">Restart kiosk browser</button></form>
+        <form method="post" action="/reload"><button class="secondary" type="submit">Refresh kiosk browser</button></form>
         <form method="post" action="/reboot"><button class="danger" type="submit">Reboot device</button></form>
       </div>
     </section>

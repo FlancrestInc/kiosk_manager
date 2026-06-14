@@ -25,6 +25,19 @@ def test_admin_page_renders_boot_splash_controls() -> None:
     assert "Boot splash" in html
 
 
+def test_admin_page_renders_reload_control_instead_of_restart_control() -> None:
+    html = admin_app.render_admin_page(
+        KioskConfig(),
+        {"hostname": "pi", "ip_address": "127.0.0.1"},
+        "",
+    )
+
+    assert 'action="/reload"' in html
+    assert "Refresh kiosk browser" in html
+    assert 'action="/restart"' not in html
+    assert "Restart kiosk browser" not in html
+
+
 def test_splash_preview_returns_current_image(monkeypatch, tmp_path: Path) -> None:
     splash_path = tmp_path / "splash.png"
     splash_path.write_bytes(PNG_BYTES)
@@ -35,6 +48,21 @@ def test_splash_preview_returns_current_image(monkeypatch, tmp_path: Path) -> No
     assert response.status_code == 200
     assert response.headers["content-type"] == "image/png"
     assert response.content == PNG_BYTES
+
+
+def test_reload_endpoint_reloads_kiosk_browser(monkeypatch) -> None:
+    calls = []
+
+    def fake_reload() -> None:
+        calls.append("reload")
+
+    monkeypatch.setattr(admin_app, "reload_kiosk_browser", fake_reload)
+
+    response = TestClient(admin_app.app).post("/reload", follow_redirects=False)
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/"
+    assert calls == ["reload"]
 
 
 def test_upload_splash_converts_supported_image(monkeypatch, tmp_path: Path) -> None:

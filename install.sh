@@ -134,6 +134,7 @@ os_packages() {
     "$chromium_package" \
     unclutter \
     x11-xserver-utils \
+    xdotool \
     fonts-noto-color-emoji \
     plymouth \
     imagemagick \

@@ -139,6 +139,21 @@ def test_os_packages_include_boot_splash_dependencies() -> None:
     assert "imagemagick" in packages
 
 
+def test_os_packages_include_reload_control_dependency() -> None:
+    result = subprocess.run(
+        [
+            "bash",
+            "-c",
+            f"source {INSTALL_SH}; os_packages chromium",
+        ],
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+
+    assert "xdotool" in result.stdout.splitlines()
+
+
 def test_configure_boot_splash_installs_theme_and_placeholder(tmp_path: Path) -> None:
     state_dir = tmp_path / "state"
     theme_dir = tmp_path / "themes"

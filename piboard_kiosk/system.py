@@ -60,6 +60,14 @@ def restart_kiosk() -> None:
     subprocess.run(["systemctl", "restart", KIOSK_SERVICE], check=True)
 
 
+def reload_kiosk_browser() -> None:
+    env = os.environ.copy()
+    env.setdefault("DISPLAY", ":0")
+    if "XAUTHORITY" not in env and KIOSK_XAUTHORITY.exists():
+        env["XAUTHORITY"] = str(KIOSK_XAUTHORITY)
+    subprocess.run(["xdotool", "key", "ctrl+r"], check=True, env=env)
+
+
 def reboot_device() -> None:
     subprocess.run(["systemctl", "reboot"], check=True)
 
