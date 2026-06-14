@@ -6,7 +6,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from piboard_kiosk import app as admin_app
-from piboard_kiosk.config import KioskConfig, load_config
+from piboard_kiosk.config import KioskConfig, load_config, save_config
 
 
 PNG_BYTES = b"\x89PNG\r\n\x1a\nplaceholder"
@@ -61,19 +61,24 @@ def test_splash_preview_returns_current_image(monkeypatch, tmp_path: Path) -> No
     assert response.content == PNG_BYTES
 
 
-def test_reload_endpoint_reloads_kiosk_browser(monkeypatch) -> None:
-    calls = []
+def test_reload_endpoint_opens_configured_dashboard_url(
+    monkeypatch, tmp_path: Path
+) -> None:
+    config_path = tmp_path / "config.json"
+    save_config(KioskConfig(primary_url="https://example.com/dashboard"), config_path)
+    opened_urls = []
 
-    def fake_reload() -> None:
-        calls.append("reload")
+    def fake_open_url(url: str) -> None:
+        opened_urls.append(url)
 
-    monkeypatch.setattr(admin_app, "reload_kiosk_browser", fake_reload)
+    monkeypatch.setattr(admin_app, "CONFIG_PATH", config_path)
+    monkeypatch.setattr(admin_app, "open_kiosk_url", fake_open_url)
 
     response = TestClient(admin_app.app).post("/reload", follow_redirects=False)
 
     assert response.status_code == 303
     assert response.headers["location"] == "/"
-    assert calls == ["reload"]
+    assert opened_urls == ["https://example.com/dashboard"]
 
 
 def test_save_and_apply_settings_navigates_kiosk_browser(
@@ -90,11 +95,6 @@ def test_save_and_apply_settings_navigates_kiosk_browser(
 
     monkeypatch.setattr(admin_app, "CONFIG_PATH", config_path)
     monkeypatch.setattr(admin_app, "apply_display_rotation", fake_apply_display_rotation)
-    monkeypatch.setattr(
-        admin_app,
-        "choose_current_url",
-        lambda config: config.primary_url,
-    )
     monkeypatch.setattr(admin_app, "open_kiosk_url", fake_open_url)
 
     response = TestClient(admin_app.app).post(

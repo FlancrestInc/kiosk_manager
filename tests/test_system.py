@@ -34,30 +34,6 @@ def test_apply_display_rotation_targets_kiosk_x_display(
     assert calls[0][1]["env"]["XAUTHORITY"] == str(xauthority)
 
 
-def test_reload_kiosk_browser_sends_reload_keystroke_to_kiosk_display(
-    monkeypatch, tmp_path: Path
-) -> None:
-    xauthority = tmp_path / ".Xauthority"
-    xauthority.write_text("", encoding="utf-8")
-    calls = []
-
-    def fake_run(command, **kwargs):
-        calls.append((command, kwargs))
-        return subprocess.CompletedProcess(command, 0)
-
-    monkeypatch.setattr(system, "KIOSK_XAUTHORITY", xauthority)
-    monkeypatch.delenv("DISPLAY", raising=False)
-    monkeypatch.delenv("XAUTHORITY", raising=False)
-    monkeypatch.setattr(subprocess, "run", fake_run)
-
-    system.reload_kiosk_browser()
-
-    assert calls[0][0] == ["xdotool", "key", "ctrl+r"]
-    assert calls[0][1]["check"] is True
-    assert calls[0][1]["env"]["DISPLAY"] == ":0"
-    assert calls[0][1]["env"]["XAUTHORITY"] == str(xauthority)
-
-
 def test_open_kiosk_url_navigates_browser_to_url(monkeypatch, tmp_path: Path) -> None:
     xauthority = tmp_path / ".Xauthority"
     xauthority.write_text("", encoding="utf-8")

@@ -17,14 +17,12 @@ from .config import (
     load_config,
     save_config,
 )
-from .kiosk import choose_current_url
 from .system import (
     apply_display_rotation,
     kiosk_status,
     open_kiosk_url,
     recent_logs,
     reboot_device,
-    reload_kiosk_browser,
     restart_kiosk,
 )
 
@@ -77,7 +75,7 @@ def update_settings(
     save_config(config, CONFIG_PATH)
     apply_display_rotation(config)
     if apply_settings:
-        open_kiosk_url(choose_current_url(config))
+        open_kiosk_url(config.primary_url)
     return RedirectResponse("/", status_code=303)
 
 
@@ -140,7 +138,8 @@ def restart() -> RedirectResponse:
 
 @app.post("/reload")
 def reload_kiosk() -> RedirectResponse:
-    reload_kiosk_browser()
+    config = load_config(CONFIG_PATH)
+    open_kiosk_url(config.primary_url)
     return RedirectResponse("/", status_code=303)
 
 
