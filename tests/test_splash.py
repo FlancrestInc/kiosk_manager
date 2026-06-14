@@ -6,7 +6,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from piboard_kiosk import app as admin_app
-from piboard_kiosk.config import KioskConfig
+from piboard_kiosk.config import KioskConfig, load_config
 
 
 PNG_BYTES = b"\x89PNG\r\n\x1a\nplaceholder"
@@ -38,6 +38,17 @@ def test_admin_page_renders_reload_control_instead_of_restart_control() -> None:
     assert "Restart kiosk browser" not in html
 
 
+def test_admin_page_renders_save_and_apply_settings_control() -> None:
+    html = admin_app.render_admin_page(
+        KioskConfig(),
+        {"hostname": "pi", "ip_address": "127.0.0.1"},
+        "",
+    )
+
+    assert 'name="apply_settings"' in html
+    assert "Save and apply" in html
+
+
 def test_splash_preview_returns_current_image(monkeypatch, tmp_path: Path) -> None:
     splash_path = tmp_path / "splash.png"
     splash_path.write_bytes(PNG_BYTES)
@@ -63,6 +74,46 @@ def test_reload_endpoint_reloads_kiosk_browser(monkeypatch) -> None:
     assert response.status_code == 303
     assert response.headers["location"] == "/"
     assert calls == ["reload"]
+
+
+def test_save_and_apply_settings_navigates_kiosk_browser(
+    monkeypatch, tmp_path: Path
+) -> None:
+    config_path = tmp_path / "config.json"
+    opened_urls = []
+
+    def fake_apply_display_rotation(config: KioskConfig) -> str:
+        return "ok"
+
+    def fake_open_url(url: str) -> None:
+        opened_urls.append(url)
+
+    monkeypatch.setattr(admin_app, "CONFIG_PATH", config_path)
+    monkeypatch.setattr(admin_app, "apply_display_rotation", fake_apply_display_rotation)
+    monkeypatch.setattr(
+        admin_app,
+        "choose_current_url",
+        lambda config: config.primary_url,
+    )
+    monkeypatch.setattr(admin_app, "open_kiosk_url", fake_open_url)
+
+    response = TestClient(admin_app.app).post(
+        "/settings",
+        data={
+            "primary_url": "https://example.com/new",
+            "additional_urls": "https://example.com/ops",
+            "rotation_interval_seconds": "300",
+            "browser_reload_interval_minutes": "60",
+            "display_rotation": "normal",
+            "zoom_level": "1",
+            "apply_settings": "1",
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert load_config(config_path).primary_url == "https://example.com/new"
+    assert opened_urls == ["https://example.com/new"]
 
 
 def test_upload_splash_converts_supported_image(monkeypatch, tmp_path: Path) -> None:

@@ -17,9 +17,11 @@ from .config import (
     load_config,
     save_config,
 )
+from .kiosk import choose_current_url
 from .system import (
     apply_display_rotation,
     kiosk_status,
+    open_kiosk_url,
     recent_logs,
     reboot_device,
     reload_kiosk_browser,
@@ -55,6 +57,7 @@ def update_settings(
     screen_sleep_enabled: bool = Form(False),
     cursor_visible: bool = Form(False),
     zoom_level: float = Form(1.0),
+    apply_settings: str = Form(""),
 ) -> RedirectResponse:
     urls = [line.strip() for line in additional_urls.splitlines() if line.strip()]
     try:
@@ -73,6 +76,8 @@ def update_settings(
 
     save_config(config, CONFIG_PATH)
     apply_display_rotation(config)
+    if apply_settings:
+        open_kiosk_url(choose_current_url(config))
     return RedirectResponse("/", status_code=303)
 
 
@@ -328,6 +333,7 @@ def render_admin_page(
 
         <div class="actions">
           <button type="submit">Save settings</button>
+          <button class="secondary" type="submit" name="apply_settings" value="1">Save and apply</button>
         </div>
       </form>
     </section>

@@ -68,6 +68,16 @@ def reload_kiosk_browser() -> None:
     subprocess.run(["xdotool", "key", "ctrl+r"], check=True, env=env)
 
 
+def open_kiosk_url(url: str) -> None:
+    env = os.environ.copy()
+    env.setdefault("DISPLAY", ":0")
+    if "XAUTHORITY" not in env and KIOSK_XAUTHORITY.exists():
+        env["XAUTHORITY"] = str(KIOSK_XAUTHORITY)
+    subprocess.run(["xdotool", "key", "ctrl+l"], check=True, env=env)
+    subprocess.run(["xdotool", "type", "--clearmodifiers", url], check=True, env=env)
+    subprocess.run(["xdotool", "key", "Return"], check=True, env=env)
+
+
 def reboot_device() -> None:
     subprocess.run(["systemctl", "reboot"], check=True)
 
