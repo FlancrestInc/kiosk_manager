@@ -11,6 +11,7 @@ from .config import KioskConfig, STATE_DIR
 
 ROTATION_STATE_PATH = STATE_DIR / "rotation-state.json"
 CHROMIUM_COMMANDS = ("chromium", "chromium-browser")
+CHROMIUM_REMOTE_DEBUGGING_PORT = 9222
 
 
 def rotation_urls(config: KioskConfig) -> list[str]:
@@ -61,6 +62,8 @@ def build_chromium_args(config: KioskConfig, current_url: str) -> list[str]:
         "--autoplay-policy=no-user-gesture-required",
         "--check-for-update-interval=31536000",
         "--disable-pinch",
+        "--remote-debugging-address=127.0.0.1",
+        f"--remote-debugging-port={CHROMIUM_REMOTE_DEBUGGING_PORT}",
         f"--force-device-scale-factor={config.zoom_level:g}",
         f"--app={current_url}",
     ]

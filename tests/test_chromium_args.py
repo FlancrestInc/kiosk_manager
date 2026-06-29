@@ -16,6 +16,8 @@ def test_build_chromium_args_uses_configured_url_and_zoom() -> None:
     assert "--app=https://example.com/live" in args
     assert "--force-device-scale-factor=1.2" in args
     assert "--disable-session-crashed-bubble" in args
+    assert "--remote-debugging-address=127.0.0.1" in args
+    assert "--remote-debugging-port=9222" in args
 
 
 def test_rotation_urls_deduplicates_and_keeps_primary_first() -> None:

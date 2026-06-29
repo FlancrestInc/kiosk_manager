@@ -58,3 +58,60 @@ def test_open_kiosk_url_navigates_browser_to_url(monkeypatch, tmp_path: Path) ->
     assert all(call[1]["check"] is True for call in calls)
     assert all(call[1]["env"]["DISPLAY"] == ":0" for call in calls)
     assert all(call[1]["env"]["XAUTHORITY"] == str(xauthority) for call in calls)
+
+
+def test_hard_reload_kiosk_browser_clears_cache_through_devtools(monkeypatch) -> None:
+    commands = []
+
+    def fake_targets():
+        return [
+            {
+                "type": "page",
+                "webSocketDebuggerUrl": "ws://127.0.0.1:9222/devtools/page/1",
+            }
+        ]
+
+    def fake_send(websocket_url, sent_commands):
+        commands.append((websocket_url, sent_commands))
+
+    monkeypatch.setattr(system, "_chromium_debugger_targets", fake_targets)
+    monkeypatch.setattr(system, "_send_chromium_devtools_commands", fake_send)
+
+    system.hard_reload_kiosk_browser()
+
+    assert commands == [
+        (
+            "ws://127.0.0.1:9222/devtools/page/1",
+            [
+                {"id": 1, "method": "Network.clearBrowserCache"},
+                {"id": 2, "method": "Page.reload", "params": {"ignoreCache": True}},
+            ],
+        )
+    ]
+
+
+def test_hard_reload_kiosk_browser_falls_back_to_cache_bypassing_shortcut(
+    monkeypatch, tmp_path: Path
+) -> None:
+    xauthority = tmp_path / ".Xauthority"
+    xauthority.write_text("", encoding="utf-8")
+    calls = []
+
+    def fake_run(command, **kwargs):
+        calls.append((command, kwargs))
+        return subprocess.CompletedProcess(command, 0)
+
+    monkeypatch.setattr(system, "KIOSK_XAUTHORITY", xauthority)
+    monkeypatch.setattr(system, "_hard_reload_with_devtools", lambda: False)
+    monkeypatch.delenv("DISPLAY", raising=False)
+    monkeypatch.delenv("XAUTHORITY", raising=False)
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    system.hard_reload_kiosk_browser()
+
+    assert [call[0] for call in calls] == [
+        ["xdotool", "key", "ctrl+shift+r"],
+    ]
+    assert calls[0][1]["check"] is True
+    assert calls[0][1]["env"]["DISPLAY"] == ":0"
+    assert calls[0][1]["env"]["XAUTHORITY"] == str(xauthority)

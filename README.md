@@ -49,10 +49,10 @@ The admin UI supports:
 - current URL
 - IP address and hostname
 - recent systemd logs
-- restart kiosk browser
+- refresh kiosk browser with a hard reload
 - reboot device
 
-Changing settings saves `/etc/piboard-kiosk/config.json`. Click **Restart kiosk browser** after changing URLs, reload interval, cursor visibility, sleep, or zoom.
+Changing settings saves `/etc/piboard-kiosk/config.json`. Click **Save and apply** to save the configured settings, navigate the kiosk browser to the primary URL, and hard reload the dashboard while bypassing browser cache. Click **Refresh kiosk browser** to hard reload the current kiosk page while bypassing browser cache.
 
 The boot splash upload stores a local PNG at `/var/lib/piboard-kiosk/splash.png`.
 PNG, JPEG, WebP, and GIF uploads are accepted and normalized to PNG. The new image

@@ -1,13 +1,20 @@
 from __future__ import annotations
 
+import asyncio
+import json
 import os
 import platform
 import socket
 import subprocess
+import urllib.request
 from pathlib import Path
 
 from .config import CONFIG_PATH, KioskConfig, load_config
-from .kiosk import ROTATION_STATE_PATH, choose_current_url
+from .kiosk import (
+    CHROMIUM_REMOTE_DEBUGGING_PORT,
+    ROTATION_STATE_PATH,
+    choose_current_url,
+)
 
 
 KIOSK_SERVICE = "piboard-kiosk.service"
@@ -70,6 +77,17 @@ def open_kiosk_url(url: str) -> None:
     subprocess.run(["xdotool", "key", "Return"], check=True, env=env)
 
 
+def hard_reload_kiosk_browser() -> None:
+    if _hard_reload_with_devtools():
+        return
+
+    env = os.environ.copy()
+    env.setdefault("DISPLAY", ":0")
+    if "XAUTHORITY" not in env and KIOSK_XAUTHORITY.exists():
+        env["XAUTHORITY"] = str(KIOSK_XAUTHORITY)
+    subprocess.run(["xdotool", "key", "ctrl+shift+r"], check=True, env=env)
+
+
 def reboot_device() -> None:
     subprocess.run(["systemctl", "reboot"], check=True)
 
@@ -90,6 +108,55 @@ def apply_display_rotation(config: KioskConfig) -> str:
         stderr=subprocess.STDOUT,
     )
     return result.stdout.strip()
+
+
+def _hard_reload_with_devtools() -> bool:
+    try:
+        targets = _chromium_debugger_targets()
+        target = next(
+            (
+                target
+                for target in targets
+                if target.get("type") == "page" and target.get("webSocketDebuggerUrl")
+            ),
+            None,
+        )
+        if target is None:
+            return False
+        _send_chromium_devtools_commands(
+            str(target["webSocketDebuggerUrl"]),
+            [
+                {"id": 1, "method": "Network.clearBrowserCache"},
+                {"id": 2, "method": "Page.reload", "params": {"ignoreCache": True}},
+            ],
+        )
+        return True
+    except Exception:
+        return False
+
+
+def _chromium_debugger_targets() -> list[dict[str, object]]:
+    url = f"http://127.0.0.1:{CHROMIUM_REMOTE_DEBUGGING_PORT}/json"
+    with urllib.request.urlopen(url, timeout=1) as response:
+        payload = json.loads(response.read().decode("utf-8"))
+    return payload if isinstance(payload, list) else []
+
+
+def _send_chromium_devtools_commands(
+    websocket_url: str, commands: list[dict[str, object]]
+) -> None:
+    asyncio.run(_send_chromium_devtools_commands_async(websocket_url, commands))
+
+
+async def _send_chromium_devtools_commands_async(
+    websocket_url: str, commands: list[dict[str, object]]
+) -> None:
+    import websockets
+
+    async with websockets.connect(websocket_url) as websocket:
+        for command in commands:
+            await websocket.send(json.dumps(command))
+            await websocket.recv()
 
 
 def _primary_ip_address() -> str:

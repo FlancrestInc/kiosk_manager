@@ -61,31 +61,32 @@ def test_splash_preview_returns_current_image(monkeypatch, tmp_path: Path) -> No
     assert response.content == PNG_BYTES
 
 
-def test_reload_endpoint_opens_configured_dashboard_url(
+def test_reload_endpoint_hard_reloads_kiosk_browser(
     monkeypatch, tmp_path: Path
 ) -> None:
     config_path = tmp_path / "config.json"
     save_config(KioskConfig(primary_url="https://example.com/dashboard"), config_path)
-    opened_urls = []
+    reloads = []
 
-    def fake_open_url(url: str) -> None:
-        opened_urls.append(url)
+    def fake_hard_reload() -> None:
+        reloads.append("reload")
 
     monkeypatch.setattr(admin_app, "CONFIG_PATH", config_path)
-    monkeypatch.setattr(admin_app, "open_kiosk_url", fake_open_url)
+    monkeypatch.setattr(admin_app, "hard_reload_kiosk_browser", fake_hard_reload)
 
     response = TestClient(admin_app.app).post("/reload", follow_redirects=False)
 
     assert response.status_code == 303
     assert response.headers["location"] == "/"
-    assert opened_urls == ["https://example.com/dashboard"]
+    assert reloads == ["reload"]
 
 
-def test_save_and_apply_settings_navigates_kiosk_browser(
+def test_save_and_apply_settings_hard_reloads_kiosk_browser(
     monkeypatch, tmp_path: Path
 ) -> None:
     config_path = tmp_path / "config.json"
     opened_urls = []
+    reloads = []
 
     def fake_apply_display_rotation(config: KioskConfig) -> str:
         return "ok"
@@ -93,9 +94,13 @@ def test_save_and_apply_settings_navigates_kiosk_browser(
     def fake_open_url(url: str) -> None:
         opened_urls.append(url)
 
+    def fake_hard_reload() -> None:
+        reloads.append("reload")
+
     monkeypatch.setattr(admin_app, "CONFIG_PATH", config_path)
     monkeypatch.setattr(admin_app, "apply_display_rotation", fake_apply_display_rotation)
     monkeypatch.setattr(admin_app, "open_kiosk_url", fake_open_url)
+    monkeypatch.setattr(admin_app, "hard_reload_kiosk_browser", fake_hard_reload)
 
     response = TestClient(admin_app.app).post(
         "/settings",
@@ -114,6 +119,7 @@ def test_save_and_apply_settings_navigates_kiosk_browser(
     assert response.status_code == 303
     assert load_config(config_path).primary_url == "https://example.com/new"
     assert opened_urls == ["https://example.com/new"]
+    assert reloads == ["reload"]
 
 
 def test_upload_splash_converts_supported_image(monkeypatch, tmp_path: Path) -> None:
