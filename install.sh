@@ -8,6 +8,8 @@ LOG_DIR="${LOG_DIR:-/var/log/piboard-kiosk}"
 KIOSK_USER="${KIOSK_USER:-piboard}"
 SPLASH_IMAGE="splash.png"
 PLYMOUTH_THEME_NAME="piboard-kiosk"
+CHROMIUM_PROFILE_DIR="${CHROMIUM_PROFILE_DIR:-$STATE_DIR/chromium-profile}"
+CHROMIUM_CACHE_DIR="${CHROMIUM_CACHE_DIR:-/tmp/chromium-cache}"
 
 select_chromium_package() {
   local package candidate
@@ -92,6 +94,14 @@ run_boot_command_if_safe() {
   fi
 }
 
+remove_browser_state_from_plymouth_theme() {
+  local theme_dir="$1"
+
+  # Plymouth theme assets are copied into initramfs. Browser profile/cache data
+  # here can make initramfs huge and fill /boot/firmware on Raspberry Pi images.
+  rm -rf "$theme_dir/.cache" "$theme_dir/.config"
+}
+
 configure_boot_splash() {
   local state_dir="${STATE_DIR:-/var/lib/piboard-kiosk}"
   local theme_root="${PLYMOUTH_THEME_ROOT:-/usr/share/plymouth/themes}"
@@ -100,6 +110,7 @@ configure_boot_splash() {
 
   write_default_splash_image "$splash_path"
   mkdir -p "$theme_dir"
+  remove_browser_state_from_plymouth_theme "$theme_dir"
   install -m 0644 /dev/stdin "$theme_dir/$PLYMOUTH_THEME_NAME.plymouth" <<EOF
 [Plymouth Theme]
 Name=PiBoard Kiosk
@@ -161,7 +172,13 @@ main() {
   fi
   usermod -aG video,audio,input,tty,render "$KIOSK_USER" 2>/dev/null || true
 
-  mkdir -p "$APP_DIR" "$CONFIG_DIR" "$STATE_DIR" "$LOG_DIR"
+  mkdir -p \
+    "$APP_DIR" \
+    "$CONFIG_DIR" \
+    "$STATE_DIR" \
+    "$LOG_DIR" \
+    "$CHROMIUM_PROFILE_DIR" \
+    "$CHROMIUM_CACHE_DIR"
   configure_boot_splash
 
   rsync -a --delete \
@@ -183,7 +200,8 @@ PY
   fi
 
   chmod +x "$APP_DIR"/scripts/*.sh
-  chown -R "$KIOSK_USER:$KIOSK_USER" "$STATE_DIR" "$LOG_DIR"
+  chown -R "$KIOSK_USER:$KIOSK_USER" "$STATE_DIR" "$LOG_DIR" "$CHROMIUM_CACHE_DIR"
+  chmod 700 "$CHROMIUM_PROFILE_DIR" "$CHROMIUM_CACHE_DIR"
   chown root:root "$CONFIG_DIR/config.json"
   chmod 0644 "$CONFIG_DIR/config.json"
 

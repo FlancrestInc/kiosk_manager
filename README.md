@@ -167,6 +167,20 @@ when a boot command line file is available. The uploaded splash is stored locall
 it is available before networking starts. Changes made from the admin UI take effect
 on the next reboot.
 
+Keep `/usr/share/plymouth/themes/piboard-kiosk` static asset-only. Plymouth theme
+files are included when initramfs is rebuilt, so Chromium profile, cache, download,
+or runtime data in that directory can massively inflate initramfs and fill
+`/boot/firmware`. The kiosk service sets `HOME` and XDG paths to safe runtime
+locations, and Chromium is launched with:
+
+```text
+--user-data-dir=/var/lib/piboard-kiosk/chromium-profile
+--disk-cache-dir=/tmp/chromium-cache
+```
+
+The installer also removes accidental `.cache` and `.config` directories from the
+Plymouth theme before rebuilding initramfs.
+
 ## Non-Interactive Display
 
 Chromium is launched with kiosk-oriented flags and no browser chrome. Cursor visibility can be disabled from config, and screen sleep can be disabled. The displayed page is intended as a passive dashboard; this project does not provide touch navigation, page editing, or signage layout tools.

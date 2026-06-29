@@ -200,6 +200,38 @@ def test_configure_boot_splash_installs_theme_and_placeholder(tmp_path: Path) ->
     ]
 
 
+def test_configure_boot_splash_removes_browser_state_from_theme(tmp_path: Path) -> None:
+    state_dir = tmp_path / "state"
+    theme_dir = tmp_path / "themes"
+    bad_cache = theme_dir / "piboard-kiosk" / ".cache" / "chromium" / "blob"
+    bad_config = theme_dir / "piboard-kiosk" / ".config" / "chromium" / "Profile"
+    bad_cache.parent.mkdir(parents=True)
+    bad_config.parent.mkdir(parents=True)
+    bad_cache.write_text("cache", encoding="utf-8")
+    bad_config.write_text("config", encoding="utf-8")
+
+    env = os.environ.copy()
+    env["STATE_DIR"] = str(state_dir)
+    env["PLYMOUTH_THEME_ROOT"] = str(theme_dir)
+
+    subprocess.run(
+        [
+            "bash",
+            "-c",
+            f"source {INSTALL_SH}; configure_boot_splash",
+        ],
+        check=True,
+        env=env,
+        text=True,
+        capture_output=True,
+    )
+
+    assert not (theme_dir / "piboard-kiosk" / ".cache").exists()
+    assert not (theme_dir / "piboard-kiosk" / ".config").exists()
+    assert (theme_dir / "piboard-kiosk" / "piboard-kiosk.plymouth").exists()
+    assert (theme_dir / "piboard-kiosk" / "piboard-kiosk.script").exists()
+
+
 def test_configure_boot_splash_preserves_existing_cmdline_tokens(tmp_path: Path) -> None:
     state_dir = tmp_path / "state"
     theme_dir = tmp_path / "themes"

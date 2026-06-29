@@ -20,6 +20,17 @@ def test_build_chromium_args_uses_configured_url_and_zoom() -> None:
     assert "--remote-debugging-port=9222" in args
 
 
+def test_build_chromium_args_uses_safe_profile_and_cache_dirs() -> None:
+    config = KioskConfig(primary_url="https://example.com/dashboard")
+
+    args = build_chromium_args(config, "https://example.com/dashboard")
+
+    assert "--user-data-dir=/var/lib/piboard-kiosk/chromium-profile" in args
+    assert "--disk-cache-dir=/tmp/chromium-cache" in args
+    assert "--no-first-run" in args
+    assert "--disable-restore-session-state" in args
+
+
 def test_rotation_urls_deduplicates_and_keeps_primary_first() -> None:
     config = KioskConfig(
         primary_url="https://example.com/a",

@@ -2,9 +2,22 @@
 set -euo pipefail
 
 export DISPLAY="${DISPLAY:-:0}"
-export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp/runtime-piboard}"
-mkdir -p "$XDG_RUNTIME_DIR"
+export HOME="/var/lib/piboard-kiosk"
+export XDG_CONFIG_HOME="/var/lib/piboard-kiosk/.config"
+export XDG_CACHE_HOME="/tmp/piboard-cache"
+export XDG_RUNTIME_DIR="/tmp/runtime-piboard"
+CHROMIUM_PROFILE_DIR="/var/lib/piboard-kiosk/chromium-profile"
+CHROMIUM_CACHE_DIR="/tmp/chromium-cache"
+
+mkdir -p \
+  "$HOME" \
+  "$XDG_CONFIG_HOME" \
+  "$XDG_CACHE_HOME" \
+  "$XDG_RUNTIME_DIR" \
+  "$CHROMIUM_PROFILE_DIR" \
+  "$CHROMIUM_CACHE_DIR"
 chmod 700 "$XDG_RUNTIME_DIR"
+chmod 700 "$CHROMIUM_PROFILE_DIR" "$CHROMIUM_CACHE_DIR"
 
 openbox-session >/tmp/piboard-openbox.log 2>&1 &
 

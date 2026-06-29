@@ -12,6 +12,8 @@ from .config import KioskConfig, STATE_DIR
 ROTATION_STATE_PATH = STATE_DIR / "rotation-state.json"
 CHROMIUM_COMMANDS = ("chromium", "chromium-browser")
 CHROMIUM_REMOTE_DEBUGGING_PORT = 9222
+CHROMIUM_USER_DATA_DIR = STATE_DIR / "chromium-profile"
+CHROMIUM_CACHE_DIR = Path("/tmp/chromium-cache")
 
 
 def rotation_urls(config: KioskConfig) -> list[str]:
@@ -56,6 +58,8 @@ def build_chromium_args(config: KioskConfig, current_url: str) -> list[str]:
         find_chromium_command(),
         "--kiosk",
         "--no-first-run",
+        f"--user-data-dir={CHROMIUM_USER_DATA_DIR}",
+        f"--disk-cache-dir={CHROMIUM_CACHE_DIR}",
         "--disable-infobars",
         "--disable-session-crashed-bubble",
         "--disable-restore-session-state",
