@@ -9,9 +9,11 @@ User=piboard
 Group=piboard
 WorkingDirectory=/opt/piboard-kiosk
 Environment=PYTHONUNBUFFERED=1
-Environment=HOME=/var/lib/piboard-kiosk
-Environment=XDG_CONFIG_HOME=/var/lib/piboard-kiosk/.config
+Environment=HOME=/var/lib/piboard-kiosk-browser
+Environment=XDG_CONFIG_HOME=/var/lib/piboard-kiosk-browser/.config
 Environment=XDG_CACHE_HOME=/tmp/piboard-cache
+Environment=PIBOARD_CHROMIUM_USER_DATA_DIR=/var/lib/piboard-kiosk-browser/chromium-profile
+Environment=PIBOARD_CHROMIUM_CACHE_DIR=/tmp/chromium-cache
 Environment=PATH=/opt/piboard-kiosk/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ExecStart=/opt/piboard-kiosk/scripts/start-kiosk-x.sh
 Restart=always

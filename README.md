@@ -54,7 +54,7 @@ The admin UI supports:
 
 Changing settings saves `/etc/piboard-kiosk/config.json`. Click **Save and apply** to save the configured settings, navigate the kiosk browser to the primary URL, and hard reload the dashboard while bypassing browser cache. Click **Refresh kiosk browser** to hard reload the current kiosk page while bypassing browser cache.
 
-The boot splash upload stores a local PNG at `/var/lib/piboard-kiosk/splash.png`.
+The boot splash upload stores a local PNG at `/var/lib/piboard-kiosk/plymouth-assets/splash.png`.
 PNG, JPEG, WebP, and GIF uploads are accepted and normalized to PNG. The new image
 appears during the next reboot.
 
@@ -152,7 +152,7 @@ The installer manages:
 
 ```text
 /usr/share/plymouth/themes/piboard-kiosk
-/var/lib/piboard-kiosk/splash.png
+/var/lib/piboard-kiosk/plymouth-assets/splash.png
 /boot/firmware/cmdline.txt
 ```
 
@@ -167,19 +167,20 @@ when a boot command line file is available. The uploaded splash is stored locall
 it is available before networking starts. Changes made from the admin UI take effect
 on the next reboot.
 
-Keep `/usr/share/plymouth/themes/piboard-kiosk` static asset-only. Plymouth theme
-files are included when initramfs is rebuilt, so Chromium profile, cache, download,
-or runtime data in that directory can massively inflate initramfs and fill
-`/boot/firmware`. The kiosk service sets `HOME` and XDG paths to safe runtime
-locations, and Chromium is launched with:
+Keep `/usr/share/plymouth/themes/piboard-kiosk` and
+`/var/lib/piboard-kiosk/plymouth-assets` static asset-only. Plymouth theme files
+and the configured `ImageDir` are included when initramfs is rebuilt, so Chromium
+profile, cache, download, or runtime data in either location can massively inflate
+initramfs and fill `/boot/firmware`. The kiosk service sets `HOME` and XDG paths
+to safe runtime locations, and Chromium is launched with:
 
 ```text
---user-data-dir=/var/lib/piboard-kiosk/chromium-profile
+--user-data-dir=/var/lib/piboard-kiosk-browser/chromium-profile
 --disk-cache-dir=/tmp/chromium-cache
 ```
 
 The installer also removes accidental `.cache` and `.config` directories from the
-Plymouth theme before rebuilding initramfs.
+Plymouth theme and asset directories before rebuilding initramfs.
 
 ## Non-Interactive Display
 

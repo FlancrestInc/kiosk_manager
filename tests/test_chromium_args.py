@@ -25,7 +25,7 @@ def test_build_chromium_args_uses_safe_profile_and_cache_dirs() -> None:
 
     args = build_chromium_args(config, "https://example.com/dashboard")
 
-    assert "--user-data-dir=/var/lib/piboard-kiosk/chromium-profile" in args
+    assert "--user-data-dir=/var/lib/piboard-kiosk-browser/chromium-profile" in args
     assert "--disk-cache-dir=/tmp/chromium-cache" in args
     assert "--no-first-run" in args
     assert "--disable-restore-session-state" in args

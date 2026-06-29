@@ -12,8 +12,15 @@ from .config import KioskConfig, STATE_DIR
 ROTATION_STATE_PATH = STATE_DIR / "rotation-state.json"
 CHROMIUM_COMMANDS = ("chromium", "chromium-browser")
 CHROMIUM_REMOTE_DEBUGGING_PORT = 9222
-CHROMIUM_USER_DATA_DIR = STATE_DIR / "chromium-profile"
-CHROMIUM_CACHE_DIR = Path("/tmp/chromium-cache")
+CHROMIUM_USER_DATA_DIR = Path(
+    os.environ.get(
+        "PIBOARD_CHROMIUM_USER_DATA_DIR",
+        "/var/lib/piboard-kiosk-browser/chromium-profile",
+    )
+)
+CHROMIUM_CACHE_DIR = Path(
+    os.environ.get("PIBOARD_CHROMIUM_CACHE_DIR", "/tmp/chromium-cache")
+)
 
 
 def rotation_urls(config: KioskConfig) -> list[str]:

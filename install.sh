@@ -8,7 +8,9 @@ LOG_DIR="${LOG_DIR:-/var/log/piboard-kiosk}"
 KIOSK_USER="${KIOSK_USER:-piboard}"
 SPLASH_IMAGE="splash.png"
 PLYMOUTH_THEME_NAME="piboard-kiosk"
-CHROMIUM_PROFILE_DIR="${CHROMIUM_PROFILE_DIR:-$STATE_DIR/chromium-profile}"
+PLYMOUTH_ASSET_DIR="${PLYMOUTH_ASSET_DIR:-$STATE_DIR/plymouth-assets}"
+CHROMIUM_HOME_DIR="${CHROMIUM_HOME_DIR:-/var/lib/piboard-kiosk-browser}"
+CHROMIUM_PROFILE_DIR="${CHROMIUM_PROFILE_DIR:-$CHROMIUM_HOME_DIR/chromium-profile}"
 CHROMIUM_CACHE_DIR="${CHROMIUM_CACHE_DIR:-/tmp/chromium-cache}"
 
 select_chromium_package() {
@@ -35,7 +37,7 @@ EOF
 }
 
 write_default_splash_image() {
-  local splash_path="${1:-$STATE_DIR/$SPLASH_IMAGE}"
+  local splash_path="${1:-$PLYMOUTH_ASSET_DIR/$SPLASH_IMAGE}"
   mkdir -p "$(dirname "$splash_path")"
   base64 -d > "$splash_path" <<'EOF'
 iVBORw0KGgoAAAANSUhEUgAAAoAAAAHgCAIAAAC6s0uzAAACFElEQVR4nO3VMQEAIAzAsIF/z0NGHjQKema2AuBn7wMAf8MEgAAQAAJAAAgAASAABIAAEAACAABAACxh7wMARwIAAEAACAAw1QAIAAEgAASAABAAAkAACAABAACAAABAAmAA+QEAIAA+v6kF8uD95mVBhAAAkAACAABIAAExP0EAAACAABAAAgAASAABIAAEAACAAABAACAAJgAEEACAABIAAEgAC4kQEBIAA+v6kF8uD95mVBhAAAkAACAABIAAExP0EAAACAABAAAgAASAABIAAEAACAAABAACAAJgAEEACAABIAAEgAC4kQEBIAA+v6kF8uD95mVBhAAAkAACAABIAAExP0EAAACAABAAAgAASAABIAAEAACAAABAACAAJgAEEACAABIAAEgAC4kQEBIAA+v6kF8uD95mVBhAAAkAACAABIAAExP0EAAACAABAAAgAASAABIAAEAACAAABAACAAJgAEEACAABIAAEgAC4kQEBIAA+v6kF8uD95mVBhAAAkAACAABIAAExP0EAAACAABAAAgAASAABIAAEAACAAABAACAAJgAEEACAABIAAEgAC4kQEBIAA+v6kF8uD95mVBhAAAkAACAABIAAExP0EAAACAABAAAgAASAABIAAEAACAAABAACAAJgAEEACAABIAAEgAC4kQEBIAA+v6kF8uD95mVBhAAAkAACAABIAAExP0EAAACAABAAAgAASAABIAAEAACAAABAACAAJgAEEACAABIAAEgAC4kQEBIAA+v6kF8uD95mVBhAAAkAACAABIAAExP0EAAACAABAAAgAASAABIAAEAACAAABAACAAJgAEEACAABIAAEgAC4kQEBIAAEgADwBfh9BYD+grHUAAAAAElFTkSuQmCC
@@ -95,22 +97,24 @@ run_boot_command_if_safe() {
 }
 
 remove_browser_state_from_plymouth_theme() {
-  local theme_dir="$1"
+  local path="$1"
 
   # Plymouth theme assets are copied into initramfs. Browser profile/cache data
   # here can make initramfs huge and fill /boot/firmware on Raspberry Pi images.
-  rm -rf "$theme_dir/.cache" "$theme_dir/.config"
+  rm -rf "$path/.cache" "$path/.config"
 }
 
 configure_boot_splash() {
   local state_dir="${STATE_DIR:-/var/lib/piboard-kiosk}"
+  local plymouth_asset_dir="${PLYMOUTH_ASSET_DIR:-$state_dir/plymouth-assets}"
   local theme_root="${PLYMOUTH_THEME_ROOT:-/usr/share/plymouth/themes}"
   local theme_dir="$theme_root/$PLYMOUTH_THEME_NAME"
-  local splash_path="$state_dir/$SPLASH_IMAGE"
+  local splash_path="$plymouth_asset_dir/$SPLASH_IMAGE"
 
   write_default_splash_image "$splash_path"
-  mkdir -p "$theme_dir"
+  mkdir -p "$theme_dir" "$plymouth_asset_dir"
   remove_browser_state_from_plymouth_theme "$theme_dir"
+  remove_browser_state_from_plymouth_theme "$plymouth_asset_dir"
   install -m 0644 /dev/stdin "$theme_dir/$PLYMOUTH_THEME_NAME.plymouth" <<EOF
 [Plymouth Theme]
 Name=PiBoard Kiosk
@@ -118,7 +122,7 @@ Description=PiBoard Kiosk boot splash
 ModuleName=script
 
 [script]
-ImageDir=$state_dir
+ImageDir=$plymouth_asset_dir
 ScriptFile=$theme_dir/$PLYMOUTH_THEME_NAME.script
 EOF
   install -m 0644 /dev/stdin "$theme_dir/$PLYMOUTH_THEME_NAME.script" <<'EOF'
@@ -177,6 +181,8 @@ main() {
     "$CONFIG_DIR" \
     "$STATE_DIR" \
     "$LOG_DIR" \
+    "$PLYMOUTH_ASSET_DIR" \
+    "$CHROMIUM_HOME_DIR" \
     "$CHROMIUM_PROFILE_DIR" \
     "$CHROMIUM_CACHE_DIR"
   configure_boot_splash
@@ -200,7 +206,12 @@ PY
   fi
 
   chmod +x "$APP_DIR"/scripts/*.sh
-  chown -R "$KIOSK_USER:$KIOSK_USER" "$STATE_DIR" "$LOG_DIR" "$CHROMIUM_CACHE_DIR"
+  chown -R \
+    "$KIOSK_USER:$KIOSK_USER" \
+    "$STATE_DIR" \
+    "$LOG_DIR" \
+    "$CHROMIUM_HOME_DIR" \
+    "$CHROMIUM_CACHE_DIR"
   chmod 700 "$CHROMIUM_PROFILE_DIR" "$CHROMIUM_CACHE_DIR"
   chown root:root "$CONFIG_DIR/config.json"
   chmod 0644 "$CONFIG_DIR/config.json"

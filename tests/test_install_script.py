@@ -188,9 +188,13 @@ def test_configure_boot_splash_installs_theme_and_placeholder(tmp_path: Path) ->
         capture_output=True,
     )
 
-    assert (state_dir / "splash.png").read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
+    asset_dir = state_dir / "plymouth-assets"
+    assert (asset_dir / "splash.png").read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
     assert (theme_dir / "piboard-kiosk" / "piboard-kiosk.plymouth").exists()
     assert (theme_dir / "piboard-kiosk" / "piboard-kiosk.script").exists()
+    assert f"ImageDir={asset_dir}" in (
+        theme_dir / "piboard-kiosk" / "piboard-kiosk.plymouth"
+    ).read_text(encoding="utf-8")
     assert "splash quiet plymouth.ignore-serial-consoles" in cmdline.read_text(
         encoding="utf-8"
     )
@@ -205,10 +209,18 @@ def test_configure_boot_splash_removes_browser_state_from_theme(tmp_path: Path) 
     theme_dir = tmp_path / "themes"
     bad_cache = theme_dir / "piboard-kiosk" / ".cache" / "chromium" / "blob"
     bad_config = theme_dir / "piboard-kiosk" / ".config" / "chromium" / "Profile"
+    bad_asset_cache = state_dir / "plymouth-assets" / ".cache" / "chromium" / "blob"
+    bad_asset_config = (
+        state_dir / "plymouth-assets" / ".config" / "chromium" / "Profile"
+    )
     bad_cache.parent.mkdir(parents=True)
     bad_config.parent.mkdir(parents=True)
+    bad_asset_cache.parent.mkdir(parents=True)
+    bad_asset_config.parent.mkdir(parents=True)
     bad_cache.write_text("cache", encoding="utf-8")
     bad_config.write_text("config", encoding="utf-8")
+    bad_asset_cache.write_text("cache", encoding="utf-8")
+    bad_asset_config.write_text("config", encoding="utf-8")
 
     env = os.environ.copy()
     env["STATE_DIR"] = str(state_dir)
@@ -228,6 +240,8 @@ def test_configure_boot_splash_removes_browser_state_from_theme(tmp_path: Path) 
 
     assert not (theme_dir / "piboard-kiosk" / ".cache").exists()
     assert not (theme_dir / "piboard-kiosk" / ".config").exists()
+    assert not (state_dir / "plymouth-assets" / ".cache").exists()
+    assert not (state_dir / "plymouth-assets" / ".config").exists()
     assert (theme_dir / "piboard-kiosk" / "piboard-kiosk.plymouth").exists()
     assert (theme_dir / "piboard-kiosk" / "piboard-kiosk.script").exists()
 
